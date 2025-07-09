@@ -27,12 +27,7 @@ const HeroSection = () => {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center bg-white">
-      {/* Simplified geometric background with no gradient influence */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-10 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
-        <div className="absolute bottom-20 right-10 w-48 h-48 bg-white/20 rounded-full blur-2xl"></div>
-        <div className="absolute top-1/2 left-1/2 w-64 h-64 bg-white/5 rounded-full blur-3xl transform -translate-x-1/2 -translate-y-1/2"></div>
-      </div>
+      {/* Clean white background only */}
 
       {/* Content */}
       <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
@@ -41,7 +36,7 @@ const HeroSection = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          <h1 className="font-montserrat font-bold text-5xl md:text-7xl mb-6 text-white leading-tight">
+          <h1 className="font-montserrat font-bold text-5xl md:text-7xl mb-6 text-black leading-tight">
             Modern Software
             <br />
             <span className="text-accent">Solutions</span>
@@ -53,8 +48,8 @@ const HeroSection = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          <p className="font-raleway text-xl md:text-2xl mb-12 text-white/90 max-w-2xl mx-auto">
-            Transforming businesses with custom software, AI solutions, and digital innovation
+          <p className="font-raleway text-xl md:text-2xl mb-12 text-gray-700 max-w-2xl mx-auto">
+            Transforming businesses with custom software, AI solutions, and digital innovation.
           </p>
         </motion.div>
 
@@ -74,19 +69,19 @@ const HeroSection = () => {
           <Button 
             variant="outline" 
             size="lg"
-            className="border-2 border-white text-white hover:bg-white hover:text-primary px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-300"
+            className="border-2 border-gray-800 text-gray-800 hover:bg-gray-800 hover:text-white px-8 py-4 text-lg font-semibold rounded-xl transition-all duration-300"
             onClick={() => window.open('https://wa.me/917678245132?text=Hi, I would like a free consultation', '_blank')}
           >
             Free Consultation
           </Button>
         </motion.div>
 
-        {/* Minimal Stats */}
+        {/* Stats */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
-          className="flex flex-wrap justify-center gap-8 text-white/80"
+          className="flex flex-wrap justify-center gap-8 text-gray-800"
         >
           <div className="text-center">
             <div className="text-2xl font-bold text-accent">50+</div>
@@ -110,8 +105,8 @@ const HeroSection = () => {
         transition={{ duration: 0.8, delay: 1.0 }}
         className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
       >
-        <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center">
-          <div className="w-1 h-3 bg-white/50 rounded-full mt-2 animate-bounce"></div>
+        <div className="w-6 h-10 border-2 border-gray-400 rounded-full flex justify-center">
+          <div className="w-1 h-3 bg-gray-600 rounded-full mt-2 animate-bounce"></div>
         </div>
       </motion.div>
     </section>

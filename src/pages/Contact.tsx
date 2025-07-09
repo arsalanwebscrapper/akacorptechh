@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
@@ -6,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { FaPhone, FaEnvelope, FaMapMarkerAlt, FaWhatsapp } from 'react-icons/fa';
 import { motion } from 'framer-motion';
+import { useContactMutations } from '@/hooks/useContactData';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -15,10 +17,33 @@ const Contact = () => {
     message: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { createMessage } = useContactMutations();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const whatsappMessage = `Hi, I'm ${formData.name}. ${formData.message}`;
-    window.open(`https://wa.me/917678245132?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
+    
+    if (!formData.name || !formData.email || !formData.subject || !formData.message) {
+      return;
+    }
+
+    try {
+      await createMessage.mutateAsync({
+        name: formData.name,
+        email: formData.email,
+        subject: formData.subject,
+        message: formData.message
+      });
+
+      // Reset form after successful submission
+      setFormData({
+        name: '',
+        email: '',
+        subject: '',
+        message: ''
+      });
+    } catch (error) {
+      console.error('Error submitting form:', error);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -26,6 +51,11 @@ const Contact = () => {
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  const handleWhatsAppContact = () => {
+    const whatsappMessage = `Hi, I'm ${formData.name || 'interested in your services'}. I would like to discuss a project with you.`;
+    window.open(`https://wa.me/917678245132?text=${encodeURIComponent(whatsappMessage)}`, '_blank');
   };
 
   return (
@@ -116,8 +146,14 @@ const Contact = () => {
                   />
                 </div>
                 
-                <Button type="submit" variant="accent" size="lg" className="w-full">
-                  Send Message
+                <Button 
+                  type="submit" 
+                  variant="accent" 
+                  size="lg" 
+                  className="w-full"
+                  disabled={createMessage.isPending}
+                >
+                  {createMessage.isPending ? 'Sending...' : 'Send Message'}
                 </Button>
               </form>
             </motion.div>
@@ -185,7 +221,7 @@ const Contact = () => {
                 <Button 
                   variant="outline" 
                   size="lg"
-                  onClick={() => window.open('https://wa.me/917678245132', '_blank')}
+                  onClick={handleWhatsAppContact}
                   className="w-full"
                 >
                   <FaWhatsapp className="mr-2" />

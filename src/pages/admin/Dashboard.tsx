@@ -14,6 +14,7 @@ import {
   FaPlus
 } from 'react-icons/fa';
 import { useBlogData, useRealtimeBlogData } from '@/hooks/useBlogData';
+import { useContactData, useRealtimeContactData } from '@/hooks/useContactData';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -22,8 +23,10 @@ const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { posts, isLoading: postsLoading } = useBlogData();
+  const { messages, isLoading: messagesLoading } = useContactData();
   const { toast } = useToast();
   useRealtimeBlogData(); // Enable real-time updates
+  useRealtimeContactData(); // Enable real-time updates for contact messages
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -72,11 +75,13 @@ const Dashboard = () => {
     }
   };
 
-  // Calculate real stats from blog data
+  // Calculate real stats from blog and contact data
   const totalPosts = posts.length;
   const publishedPosts = posts.filter(post => post.status === 'published').length;
   const draftPosts = posts.filter(post => post.status === 'draft').length;
   const featuredPosts = posts.filter(post => post.featured).length;
+  const totalMessages = messages.length;
+  const unreadMessages = messages.filter(msg => msg.status === 'unread').length;
 
   const stats = [
     {
@@ -95,10 +100,10 @@ const Dashboard = () => {
     },
     {
       title: 'Contact Messages',
-      value: '24',
+      value: messagesLoading ? '...' : totalMessages.toString(),
       icon: FaEnvelope,
       color: 'from-orange-500 to-orange-600',
-      change: '+5 this week'
+      change: unreadMessages > 0 ? `${unreadMessages} unread` : 'All read'
     },
     {
       title: 'Website Visitors',
@@ -231,7 +236,7 @@ const Dashboard = () => {
                         {stat.title}
                       </p>
                       <p className="text-3xl font-bold text-primary">
-                        {postsLoading ? '...' : stat.value}
+                        {(postsLoading || messagesLoading) && stat.title.includes('Posts') ? '...' : stat.value}
                       </p>
                       <p className="text-sm text-green-600 mt-1">
                         {stat.change}

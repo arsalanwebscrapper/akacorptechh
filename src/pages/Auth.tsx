@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -6,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -20,6 +22,17 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Check if user is already authenticated
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate('/admin/dashboard');
+      }
+    };
+    checkAuth();
+  }, [navigate]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
@@ -32,37 +45,56 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      // Simulate authentication
       if (isLogin) {
-        // Login logic
-        if (formData.email === 'admin@akacorptech.com' && formData.password === 'admin123') {
-          localStorage.setItem('isAuthenticated', 'true');
-          localStorage.setItem('userRole', 'admin');
+        // Login with Supabase
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        if (data.user) {
           toast({
             title: "Welcome back!",
             description: "Successfully logged in to admin panel.",
           });
           navigate('/admin/dashboard');
-        } else {
-          throw new Error('Invalid credentials');
         }
       } else {
-        // Registration logic
+        // Registration with Supabase
         if (formData.password !== formData.confirmPassword) {
           throw new Error('Passwords do not match');
         }
-        
-        toast({
-          title: "Registration Successful!",
-          description: "Please login with your credentials.",
+
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/admin/dashboard`
+          }
         });
-        setIsLogin(true);
-        setFormData({ email: '', password: '', confirmPassword: '' });
+
+        if (error) {
+          throw error;
+        }
+
+        if (data.user) {
+          toast({
+            title: "Registration Successful!",
+            description: "Please check your email to confirm your account.",
+          });
+          setIsLogin(true);
+          setFormData({ email: '', password: '', confirmPassword: '' });
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Auth error:', error);
       toast({
         title: "Authentication Failed",
-        description: error instanceof Error ? error.message : "An error occurred",
+        description: error.message || "An error occurred during authentication",
         variant: "destructive",
       });
     } finally {
@@ -105,7 +137,7 @@ const Auth = () => {
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  placeholder="admin@akacorptech.com"
+                  placeholder="Enter your email"
                   required
                   className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                 />
@@ -171,16 +203,6 @@ const Auth = () => {
                 }
               </button>
             </div>
-
-            {isLogin && (
-              <div className="mt-4 p-3 bg-accent/20 rounded-lg">
-                <p className="text-white/80 text-sm text-center">
-                  <strong>Demo Credentials:</strong><br />
-                  Email: admin@akacorptech.com<br />
-                  Password: admin123
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
 

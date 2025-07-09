@@ -14,26 +14,62 @@ import {
   FaPlus
 } from 'react-icons/fa';
 import { useBlogData, useRealtimeBlogData } from '@/hooks/useBlogData';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const Dashboard = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  const { posts, isLoading } = useBlogData();
+  const { posts, isLoading: postsLoading } = useBlogData();
+  const { toast } = useToast();
   useRealtimeBlogData(); // Enable real-time updates
 
   useEffect(() => {
-    const auth = localStorage.getItem('isAuthenticated');
-    if (auth !== 'true') {
-      navigate('/auth');
-    } else {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        navigate('/auth');
+        return;
+      }
+      
       setIsAuthenticated(true);
-    }
+      setIsLoading(false);
+    };
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate('/auth');
+      } else {
+        setIsAuthenticated(true);
+        setIsLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userRole');
-    navigate('/auth');
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast({
+        title: "Logged out successfully",
+        description: "You have been signed out of the admin panel.",
+      });
+      navigate('/auth');
+    } catch (error: any) {
+      toast({
+        title: "Logout failed",
+        description: error.message || "An error occurred while logging out",
+        variant: "destructive",
+      });
+    }
   };
 
   // Calculate real stats from blog data
@@ -118,7 +154,7 @@ const Dashboard = () => {
     }
   ];
 
-  if (!isAuthenticated) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -127,6 +163,10 @@ const Dashboard = () => {
         </div>
       </div>
     );
+  }
+
+  if (!isAuthenticated) {
+    return null; // Will redirect to auth page
   }
 
   return (
@@ -191,7 +231,7 @@ const Dashboard = () => {
                         {stat.title}
                       </p>
                       <p className="text-3xl font-bold text-primary">
-                        {isLoading ? '...' : stat.value}
+                        {postsLoading ? '...' : stat.value}
                       </p>
                       <p className="text-sm text-green-600 mt-1">
                         {stat.change}
@@ -251,7 +291,7 @@ const Dashboard = () => {
             <CardDescription>Latest blog posts from your content management system</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
+            {postsLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
               </div>

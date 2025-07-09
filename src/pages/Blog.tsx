@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -6,124 +7,31 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { FaCalendar, FaUser, FaClock, FaArrowRight } from 'react-icons/fa';
 import { motion } from 'framer-motion';
-
-interface BlogPost {
-  id: number;
-  title: string;
-  excerpt: string;
-  content?: string;
-  author: string;
-  publishedAt: string;
-  readTime: string;
-  category: string;
-  tags: string[];
-  image: string;
-  featured: boolean;
-}
+import { useBlogData, useRealtimeBlogData, BlogPost } from '@/hooks/useBlogData';
 
 const Blog = () => {
-  const [posts, setPosts] = useState<BlogPost[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { posts, isLoading, error } = useBlogData();
+  useRealtimeBlogData(); // Enable real-time updates
 
-  // Demo blog posts - In real implementation, this would come from your backend
-  const demoPosts: BlogPost[] = [
-    {
-      id: 1,
-      title: "AI in 2025: Trends to Watch for Business Transformation",
-      excerpt: "Explore the latest AI trends that will revolutionize business operations in 2025, from generative AI to autonomous systems.",
-      author: "AKACorpTech Team",
-      publishedAt: "2024-12-15",
-      readTime: "8 min read",
-      category: "Artificial Intelligence",
-      tags: ["AI", "Machine Learning", "Business Strategy", "2025 Trends"],
-      image: "/api/placeholder/600/400",
-      featured: true
-    },
-    {
-      id: 2,
-      title: "Building Scalable React Applications: Best Practices",
-      excerpt: "Learn essential techniques for building maintainable and scalable React applications that can grow with your business.",
-      author: "Dev Team",
-      publishedAt: "2024-12-10",
-      readTime: "12 min read",
-      category: "Web Development",
-      tags: ["React", "JavaScript", "Frontend", "Scalability"],
-      image: "/api/placeholder/600/400",
-      featured: true
-    },
-    {
-      id: 3,
-      title: "Blockchain Beyond Cryptocurrency: Real-World Applications",
-      excerpt: "Discover how blockchain technology is transforming industries beyond finance, from supply chain to healthcare.",
-      author: "Blockchain Expert",
-      publishedAt: "2024-12-05",
-      readTime: "10 min read",
-      category: "Blockchain",
-      tags: ["Blockchain", "Cryptocurrency", "Supply Chain", "Healthcare"],
-      image: "/api/placeholder/600/400",
-      featured: false
-    },
-    {
-      id: 4,
-      title: "DevOps Best Practices for Startup Success",
-      excerpt: "Essential DevOps strategies that can help startups deploy faster, scale efficiently, and maintain high-quality software.",
-      author: "DevOps Team",
-      publishedAt: "2024-12-01",
-      readTime: "6 min read",
-      category: "DevOps",
-      tags: ["DevOps", "CI/CD", "Startups", "Cloud"],
-      image: "/api/placeholder/600/400",
-      featured: false
-    },
-    {
-      id: 5,
-      title: "Cybersecurity in the Age of Remote Work",
-      excerpt: "Protecting your business in a distributed workforce: essential security measures for remote teams.",
-      author: "Security Expert",
-      publishedAt: "2024-11-28",
-      readTime: "9 min read",
-      category: "Cybersecurity",
-      tags: ["Security", "Remote Work", "Privacy", "Data Protection"],
-      image: "/api/placeholder/600/400",
-      featured: false
-    },
-    {
-      id: 6,
-      title: "The Future of Mobile App Development",
-      excerpt: "Exploring emerging technologies and frameworks that will shape mobile app development in the coming years.",
-      author: "Mobile Team",
-      publishedAt: "2024-11-25",
-      readTime: "7 min read",
-      category: "Mobile Development",
-      tags: ["Mobile", "Flutter", "React Native", "iOS", "Android"],
-      image: "/api/placeholder/600/400",
-      featured: false
-    }
-  ];
+  // Filter published posts only for public view
+  const publishedPosts = posts.filter(post => post.status === 'published');
+  const featuredPosts = publishedPosts.filter(post => post.featured);
+  const regularPosts = publishedPosts.filter(post => !post.featured);
 
-  useEffect(() => {
-    // Simulate API call
-    const fetchPosts = async () => {
-      setLoading(true);
-      // In real implementation, this would be an API call to your backend
-      setTimeout(() => {
-        setPosts(demoPosts);
-        setLoading(false);
-      }, 1000);
-    };
-
-    fetchPosts();
-  }, []);
-
-  const featuredPosts = posts.filter(post => post.featured);
-  const regularPosts = posts.filter(post => !post.featured);
-
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'No date';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  const calculateReadTime = (content: string | null) => {
+    if (!content) return '1 min read';
+    const words = content.split(' ').length;
+    const readTime = Math.ceil(words / 200);
+    return `${readTime} min read`;
   };
 
   const containerVariants = {
@@ -145,7 +53,7 @@ const Blog = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
@@ -159,6 +67,83 @@ const Blog = () => {
       </div>
     );
   }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="pt-20 flex items-center justify-center min-h-[50vh]">
+          <div className="text-center">
+            <p className="text-destructive mb-4">Error loading blog posts</p>
+            <p className="text-muted-foreground">Please try again later</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  const renderBlogCard = (post: BlogPost, isFeatured = false) => (
+    <motion.div key={post.id} variants={itemVariants}>
+      <Card className="card-hover h-full">
+        <div className="relative overflow-hidden rounded-t-lg">
+          <img
+            src={post.image_url || "/api/placeholder/600/400"}
+            alt={post.title}
+            className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+          <div className="absolute top-4 left-4">
+            <Badge className={isFeatured ? "bg-accent text-accent-foreground" : "bg-secondary"}>
+              {isFeatured ? 'Featured' : post.category || 'General'}
+            </Badge>
+          </div>
+        </div>
+        
+        <CardHeader>
+          <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-2">
+            <div className="flex items-center space-x-1">
+              <FaCalendar className="w-3 h-3" />
+              <span>{formatDate(post.published_at)}</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <FaClock className="w-3 h-3" />
+              <span>{calculateReadTime(post.content)}</span>
+            </div>
+          </div>
+          
+          <CardTitle className="font-montserrat text-xl mb-2 line-clamp-2">
+            {post.title}
+          </CardTitle>
+          
+          <CardDescription className="line-clamp-3">
+            {post.excerpt || 'No excerpt available'}
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {post.tags?.slice(0, 3).map((tag) => (
+              <Badge key={tag} variant="secondary" className="text-xs">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <FaUser className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">{post.author}</span>
+            </div>
+            
+            <Button variant="ghost" size="sm" className="text-accent hover:text-accent-light group/btn">
+              Read More
+              <FaArrowRight className="ml-2 w-3 h-3 transition-transform group-hover/btn:translate-x-1" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -210,67 +195,7 @@ const Blog = () => {
               viewport={{ once: true }}
               className="grid grid-cols-1 lg:grid-cols-2 gap-8"
             >
-              {featuredPosts.map((post) => (
-                <motion.div key={post.id} variants={itemVariants}>
-                  <Card className="card-hover h-full">
-                    <div className="relative overflow-hidden rounded-t-lg">
-                      <img
-                        src={post.image}
-                        alt={post.title}
-                        className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                      <div className="absolute top-4 left-4">
-                        <Badge className="bg-accent text-accent-foreground">
-                          Featured
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    <CardHeader>
-                      <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-2">
-                        <div className="flex items-center space-x-1">
-                          <FaCalendar className="w-3 h-3" />
-                          <span>{formatDate(post.publishedAt)}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <FaClock className="w-3 h-3" />
-                          <span>{post.readTime}</span>
-                        </div>
-                      </div>
-                      
-                      <CardTitle className="font-montserrat text-xl mb-2 line-clamp-2">
-                        {post.title}
-                      </CardTitle>
-                      
-                      <CardDescription className="line-clamp-3">
-                        {post.excerpt}
-                      </CardDescription>
-                    </CardHeader>
-
-                    <CardContent>
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {post.tags.slice(0, 3).map((tag) => (
-                          <Badge key={tag} variant="secondary" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <FaUser className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">{post.author}</span>
-                        </div>
-                        
-                        <Button variant="ghost" size="sm" className="text-accent hover:text-accent-light group/btn">
-                          Read More
-                          <FaArrowRight className="ml-2 w-3 h-3 transition-transform group-hover/btn:translate-x-1" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+              {featuredPosts.map((post) => renderBlogCard(post, true))}
             </motion.div>
           </div>
         </section>
@@ -291,75 +216,23 @@ const Blog = () => {
             </h2>
           </motion.div>
 
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-          >
-            {regularPosts.map((post) => (
-              <motion.div key={post.id} variants={itemVariants}>
-                <Card className="card-hover h-full">
-                  <div className="relative overflow-hidden rounded-t-lg">
-                    <img
-                      src={post.image}
-                      alt={post.title}
-                      className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                    <div className="absolute top-4 left-4">
-                      <Badge variant="secondary">
-                        {post.category}
-                      </Badge>
-                    </div>
-                  </div>
-                  
-                  <CardHeader>
-                    <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-2">
-                      <div className="flex items-center space-x-1">
-                        <FaCalendar className="w-3 h-3" />
-                        <span>{formatDate(post.publishedAt)}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <FaClock className="w-3 h-3" />
-                        <span>{post.readTime}</span>
-                      </div>
-                    </div>
-                    
-                    <CardTitle className="font-montserrat text-lg mb-2 line-clamp-2">
-                      {post.title}
-                    </CardTitle>
-                    
-                    <CardDescription className="line-clamp-3">
-                      {post.excerpt}
-                    </CardDescription>
-                  </CardHeader>
-
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {post.tags.slice(0, 2).map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <FaUser className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">{post.author}</span>
-                      </div>
-                      
-                      <Button variant="ghost" size="sm" className="text-accent hover:text-accent-light group/btn">
-                        Read
-                        <FaArrowRight className="ml-2 w-3 h-3 transition-transform group-hover/btn:translate-x-1" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </motion.div>
+          {regularPosts.length > 0 ? (
+            <motion.div
+              variants={containerVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+            >
+              {regularPosts.map((post) => renderBlogCard(post))}
+            </motion.div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground text-lg">
+                No published articles yet. Check back soon!
+              </p>
+            </div>
+          )}
 
           <motion.div
             initial={{ opacity: 0, y: 30 }}

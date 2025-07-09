@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -16,28 +17,9 @@ import {
   FaSave,
   FaTimes
 } from 'react-icons/fa';
-import { useToast } from '@/hooks/use-toast';
-
-interface BlogPost {
-  id: number;
-  title: string;
-  excerpt: string;
-  content: string;
-  author: string;
-  publishedAt: string;
-  readTime: string;
-  category: string;
-  tags: string[];
-  image: string;
-  featured: boolean;
-  status: 'draft' | 'published';
-  seoTitle?: string;
-  seoDescription?: string;
-  seoKeywords?: string[];
-}
+import { useBlogData, useRealtimeBlogData, useBlogMutations, BlogPost } from '@/hooks/useBlogData';
 
 const BlogManager = () => {
-  const [posts, setPosts] = useState<BlogPost[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
@@ -49,16 +31,18 @@ const BlogManager = () => {
     author: 'AKACorpTech Team',
     category: '',
     tags: [],
-    image: '',
+    image_url: '',
     featured: false,
     status: 'draft',
-    seoTitle: '',
-    seoDescription: '',
-    seoKeywords: []
+    seo_title: '',
+    seo_description: '',
+    seo_keywords: []
   });
   
   const navigate = useNavigate();
-  const { toast } = useToast();
+  const { posts, isLoading } = useBlogData();
+  const { createBlog, updateBlog, deleteBlog } = useBlogMutations();
+  useRealtimeBlogData(); // Enable real-time updates
 
   useEffect(() => {
     const auth = localStorage.getItem('isAuthenticated');
@@ -66,51 +50,8 @@ const BlogManager = () => {
       navigate('/auth');
     } else {
       setIsAuthenticated(true);
-      loadPosts();
     }
   }, [navigate]);
-
-  const loadPosts = () => {
-    // Demo posts - In real implementation, this would be an API call
-    const demoPosts: BlogPost[] = [
-      {
-        id: 1,
-        title: "AI in 2025: Trends to Watch for Business Transformation",
-        excerpt: "Explore the latest AI trends that will revolutionize business operations in 2025.",
-        content: "Artificial Intelligence continues to evolve at breakneck speed...",
-        author: "AKACorpTech Team",
-        publishedAt: "2024-12-15",
-        readTime: "8 min read",
-        category: "Artificial Intelligence",
-        tags: ["AI", "Machine Learning", "Business Strategy", "2025 Trends"],
-        image: "/api/placeholder/600/400",
-        featured: true,
-        status: 'published',
-        seoTitle: "AI Trends 2025 - Business Transformation Guide",
-        seoDescription: "Discover the top AI trends for 2025 that will transform business operations and drive innovation.",
-        seoKeywords: ["AI trends 2025", "artificial intelligence", "business transformation", "machine learning"]
-      },
-      {
-        id: 2,
-        title: "Building Scalable React Applications: Best Practices",
-        excerpt: "Learn essential techniques for building maintainable and scalable React applications.",
-        content: "React has become the go-to framework for modern web development...",
-        author: "Dev Team",
-        publishedAt: "2024-12-10",
-        readTime: "12 min read",
-        category: "Web Development",
-        tags: ["React", "JavaScript", "Frontend", "Scalability"],
-        image: "/api/placeholder/600/400",
-        featured: true,
-        status: 'published',
-        seoTitle: "React Best Practices - Scalable Application Development",
-        seoDescription: "Master React best practices for building scalable, maintainable applications.",
-        seoKeywords: ["React best practices", "scalable React", "React architecture", "frontend development"]
-      }
-    ];
-    
-    setPosts(demoPosts);
-  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -121,7 +62,7 @@ const BlogManager = () => {
         ...prev,
         [name]: checked
       }));
-    } else if (name === 'tags' || name === 'seoKeywords') {
+    } else if (name === 'tags' || name === 'seo_keywords') {
       const arrayValue = value.split(',').map(item => item.trim()).filter(item => item);
       setFormData(prev => ({
         ...prev,
@@ -139,29 +80,12 @@ const BlogManager = () => {
     e.preventDefault();
     
     if (editingPost) {
-      // Update existing post
-      setPosts(prev => prev.map(post => 
-        post.id === editingPost.id 
-          ? { ...post, ...formData, id: editingPost.id }
-          : post
-      ));
-      toast({
-        title: "Blog Updated!",
-        description: "Your blog post has been successfully updated.",
+      updateBlog.mutate({ 
+        id: editingPost.id, 
+        ...formData 
       });
     } else {
-      // Create new post
-      const newPost: BlogPost = {
-        ...formData as BlogPost,
-        id: Date.now(),
-        publishedAt: new Date().toISOString().split('T')[0],
-        readTime: `${Math.ceil((formData.content?.length || 0) / 200)} min read`
-      };
-      setPosts(prev => [newPost, ...prev]);
-      toast({
-        title: "Blog Created!",
-        description: "Your new blog post has been created successfully.",
-      });
+      createBlog.mutate(formData as Omit<BlogPost, 'id' | 'published_at' | 'updated_at'>);
     }
     
     resetForm();
@@ -175,12 +99,12 @@ const BlogManager = () => {
       author: 'AKACorpTech Team',
       category: '',
       tags: [],
-      image: '',
+      image_url: '',
       featured: false,
       status: 'draft',
-      seoTitle: '',
-      seoDescription: '',
-      seoKeywords: []
+      seo_title: '',
+      seo_description: '',
+      seo_keywords: []
     });
     setEditingPost(null);
     setShowForm(false);
@@ -192,21 +116,16 @@ const BlogManager = () => {
     setShowForm(true);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this blog post?')) {
-      setPosts(prev => prev.filter(post => post.id !== id));
-      toast({
-        title: "Blog Deleted",
-        description: "The blog post has been deleted successfully.",
-        variant: "destructive",
-      });
+      deleteBlog.mutate(id);
     }
   };
 
   const filteredPosts = posts.filter(post =>
     post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    post.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    post.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
+    (post.category && post.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (post.tags && post.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase())))
   );
 
   if (!isAuthenticated) {
@@ -268,85 +187,97 @@ const BlogManager = () => {
               </div>
             </div>
 
-            {/* Posts Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredPosts.map((post) => (
-                <Card key={post.id} className="card-hover">
-                  <CardHeader>
-                    <div className="flex items-center justify-between mb-2">
-                      <Badge variant={post.status === 'published' ? 'default' : 'secondary'}>
-                        {post.status}
-                      </Badge>
-                      {post.featured && (
-                        <Badge className="bg-accent text-accent-foreground">
-                          Featured
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    <CardTitle className="font-montserrat text-lg line-clamp-2">
-                      {post.title}
-                    </CardTitle>
-                    
-                    <CardDescription className="line-clamp-2">
-                      {post.excerpt}
-                    </CardDescription>
-                  </CardHeader>
+            {/* Loading State */}
+            {isLoading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading blog posts...</p>
+                </div>
+              </div>
+            )}
 
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap gap-1">
-                        {post.tags.slice(0, 3).map((tag) => (
-                          <Badge key={tag} variant="secondary" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                        {post.tags.length > 3 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{post.tags.length - 3}
+            {/* Posts Grid */}
+            {!isLoading && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredPosts.map((post) => (
+                  <Card key={post.id} className="card-hover">
+                    <CardHeader>
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge variant={post.status === 'published' ? 'default' : 'secondary'}>
+                          {post.status}
+                        </Badge>
+                        {post.featured && (
+                          <Badge className="bg-accent text-accent-foreground">
+                            Featured
                           </Badge>
                         )}
                       </div>
                       
-                      <div className="text-sm text-muted-foreground">
-                        <p>{post.category} • {post.readTime}</p>
-                        <p>By {post.author}</p>
-                        <p>Published: {new Date(post.publishedAt).toLocaleDateString()}</p>
-                      </div>
+                      <CardTitle className="font-montserrat text-lg line-clamp-2">
+                        {post.title}
+                      </CardTitle>
+                      
+                      <CardDescription className="line-clamp-2">
+                        {post.excerpt || 'No excerpt available'}
+                      </CardDescription>
+                    </CardHeader>
 
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(post)}
-                        >
-                          <FaEdit className="mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(`/blog/${post.id}`, '_blank')}
-                        >
-                          <FaEye className="mr-1" />
-                          View
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(post.id)}
-                        >
-                          <FaTrash className="mr-1" />
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap gap-1">
+                          {post.tags?.slice(0, 3).map((tag) => (
+                            <Badge key={tag} variant="secondary" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                          {post.tags && post.tags.length > 3 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{post.tags.length - 3}
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        <div className="text-sm text-muted-foreground">
+                          <p>{post.category || 'No category'}</p>
+                          <p>By {post.author}</p>
+                          <p>Published: {post.published_at ? new Date(post.published_at).toLocaleDateString() : 'Not published'}</p>
+                        </div>
 
-            {filteredPosts.length === 0 && (
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(post)}
+                          >
+                            <FaEdit className="mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(`/blog`, '_blank')}
+                          >
+                            <FaEye className="mr-1" />
+                            View
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDelete(post.id)}
+                          >
+                            <FaTrash className="mr-1" />
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+
+            {!isLoading && filteredPosts.length === 0 && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground text-lg">
                   {searchTerm ? 'No blog posts found matching your search.' : 'No blog posts yet.'}
@@ -408,7 +339,7 @@ const BlogManager = () => {
                       <Textarea
                         id="excerpt"
                         name="excerpt"
-                        value={formData.excerpt}
+                        value={formData.excerpt || ''}
                         onChange={handleInputChange}
                         placeholder="Brief description of the blog post"
                         rows={3}
@@ -421,7 +352,7 @@ const BlogManager = () => {
                       <Input
                         id="category"
                         name="category"
-                        value={formData.category}
+                        value={formData.category || ''}
                         onChange={handleInputChange}
                         placeholder="e.g., Web Development, AI, Blockchain"
                         required
@@ -433,7 +364,7 @@ const BlogManager = () => {
                       <Input
                         id="tags"
                         name="tags"
-                        value={formData.tags?.join(', ')}
+                        value={formData.tags?.join(', ') || ''}
                         onChange={handleInputChange}
                         placeholder="React, JavaScript, Tutorial"
                       />
@@ -451,11 +382,11 @@ const BlogManager = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="image">Featured Image URL</Label>
+                      <Label htmlFor="image_url">Featured Image URL</Label>
                       <Input
-                        id="image"
-                        name="image"
-                        value={formData.image}
+                        id="image_url"
+                        name="image_url"
+                        value={formData.image_url || ''}
                         onChange={handleInputChange}
                         placeholder="https://example.com/image.jpg"
                       />
@@ -467,22 +398,22 @@ const BlogManager = () => {
                     <h3 className="font-montserrat font-semibold text-lg">SEO Information</h3>
                     
                     <div className="space-y-2">
-                      <Label htmlFor="seoTitle">SEO Title</Label>
+                      <Label htmlFor="seo_title">SEO Title</Label>
                       <Input
-                        id="seoTitle"
-                        name="seoTitle"
-                        value={formData.seoTitle}
+                        id="seo_title"
+                        name="seo_title"
+                        value={formData.seo_title || ''}
                         onChange={handleInputChange}
                         placeholder="SEO optimized title"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="seoDescription">SEO Description</Label>
+                      <Label htmlFor="seo_description">SEO Description</Label>
                       <Textarea
-                        id="seoDescription"
-                        name="seoDescription"
-                        value={formData.seoDescription}
+                        id="seo_description"
+                        name="seo_description"
+                        value={formData.seo_description || ''}
                         onChange={handleInputChange}
                         placeholder="SEO meta description"
                         rows={3}
@@ -490,11 +421,11 @@ const BlogManager = () => {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="seoKeywords">SEO Keywords (comma-separated)</Label>
+                      <Label htmlFor="seo_keywords">SEO Keywords (comma-separated)</Label>
                       <Input
-                        id="seoKeywords"
-                        name="seoKeywords"
-                        value={formData.seoKeywords?.join(', ')}
+                        id="seo_keywords"
+                        name="seo_keywords"
+                        value={formData.seo_keywords?.join(', ') || ''}
                         onChange={handleInputChange}
                         placeholder="keyword1, keyword2, keyword3"
                       />
@@ -506,7 +437,7 @@ const BlogManager = () => {
                           type="checkbox"
                           id="featured"
                           name="featured"
-                          checked={formData.featured}
+                          checked={formData.featured || false}
                           onChange={handleInputChange}
                           className="rounded border-border"
                         />
@@ -536,7 +467,7 @@ const BlogManager = () => {
                   <Textarea
                     id="content"
                     name="content"
-                    value={formData.content}
+                    value={formData.content || ''}
                     onChange={handleInputChange}
                     placeholder="Write your blog content here..."
                     rows={12}
@@ -545,9 +476,16 @@ const BlogManager = () => {
                 </div>
 
                 <div className="flex space-x-4">
-                  <Button type="submit" variant="accent">
+                  <Button 
+                    type="submit" 
+                    variant="accent"
+                    disabled={createBlog.isPending || updateBlog.isPending}
+                  >
                     <FaSave className="mr-2" />
-                    {editingPost ? 'Update Post' : 'Create Post'}
+                    {createBlog.isPending || updateBlog.isPending 
+                      ? 'Saving...' 
+                      : (editingPost ? 'Update Post' : 'Create Post')
+                    }
                   </Button>
                   <Button type="button" variant="outline" onClick={resetForm}>
                     Cancel

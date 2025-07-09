@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -12,10 +13,13 @@ import {
   FaSignOutAlt,
   FaPlus
 } from 'react-icons/fa';
+import { useBlogData, useRealtimeBlogData } from '@/hooks/useBlogData';
 
 const Dashboard = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
+  const { posts, isLoading } = useBlogData();
+  useRealtimeBlogData(); // Enable real-time updates
 
   useEffect(() => {
     const auth = localStorage.getItem('isAuthenticated');
@@ -32,20 +36,26 @@ const Dashboard = () => {
     navigate('/auth');
   };
 
+  // Calculate real stats from blog data
+  const totalPosts = posts.length;
+  const publishedPosts = posts.filter(post => post.status === 'published').length;
+  const draftPosts = posts.filter(post => post.status === 'draft').length;
+  const featuredPosts = posts.filter(post => post.featured).length;
+
   const stats = [
     {
       title: 'Total Blog Posts',
-      value: '12',
+      value: totalPosts.toString(),
       icon: FaBlog,
       color: 'from-blue-500 to-blue-600',
-      change: '+2 this month'
+      change: `${publishedPosts} published`
     },
     {
-      title: 'Portfolio Projects',
-      value: '8',
+      title: 'Draft Posts',
+      value: draftPosts.toString(),
       icon: FaFolder,
       color: 'from-green-500 to-green-600',
-      change: '+1 this month'
+      change: `${featuredPosts} featured`
     },
     {
       title: 'Contact Messages',
@@ -68,7 +78,7 @@ const Dashboard = () => {
       title: 'Write New Blog Post',
       description: 'Create and publish a new blog article',
       icon: FaPlus,
-      action: () => navigate('/admin/blogs/new'),
+      action: () => navigate('/admin/blogs'),
       color: 'bg-accent hover:bg-accent-light'
     },
     {
@@ -181,7 +191,7 @@ const Dashboard = () => {
                         {stat.title}
                       </p>
                       <p className="text-3xl font-bold text-primary">
-                        {stat.value}
+                        {isLoading ? '...' : stat.value}
                       </p>
                       <p className="text-sm text-green-600 mt-1">
                         {stat.change}
@@ -237,30 +247,41 @@ const Dashboard = () => {
         {/* Recent Activity */}
         <Card>
           <CardHeader>
-            <CardTitle className="font-montserrat text-xl">Recent Activity</CardTitle>
-            <CardDescription>Latest updates and changes to your content</CardDescription>
+            <CardTitle className="font-montserrat text-xl">Recent Blog Posts</CardTitle>
+            <CardDescription>Latest blog posts from your content management system</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[
-                { action: 'New blog post published', time: '2 hours ago', type: 'blog' },
-                { action: 'Portfolio project updated', time: '1 day ago', type: 'portfolio' },
-                { action: 'New contact message received', time: '2 days ago', type: 'message' },
-                { action: 'Blog post edited', time: '3 days ago', type: 'blog' },
-              ].map((activity, index) => (
-                <div key={index} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-2 h-2 rounded-full ${
-                      activity.type === 'blog' ? 'bg-blue-500' :
-                      activity.type === 'portfolio' ? 'bg-green-500' :
-                      'bg-orange-500'
-                    }`}></div>
-                    <span className="font-raleway text-sm">{activity.action}</span>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {posts.slice(0, 4).map((post) => (
+                  <div key={post.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-2 h-2 rounded-full ${
+                        post.status === 'published' ? 'bg-green-500' : 'bg-yellow-500'
+                      }`}></div>
+                      <div>
+                        <span className="font-raleway text-sm font-medium">{post.title}</span>
+                        <p className="text-xs text-muted-foreground">
+                          By {post.author} • {post.status === 'published' ? 'Published' : 'Draft'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {post.updated_at ? new Date(post.updated_at).toLocaleDateString() : 'No date'}
+                    </span>
                   </div>
-                  <span className="text-sm text-muted-foreground">{activity.time}</span>
-                </div>
-              ))}
-            </div>
+                ))}
+                {posts.length === 0 && (
+                  <p className="text-center text-muted-foreground py-4">
+                    No blog posts yet. Create your first post to get started!
+                  </p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

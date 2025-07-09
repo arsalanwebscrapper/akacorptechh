@@ -118,17 +118,24 @@ const BlogManager = () => {
         ...editingPost,
         tags: tagInput.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
         seo_keywords: keywordInput.split(',').map(keyword => keyword.trim()).filter(keyword => keyword.length > 0),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        image_url: editingPost.image_url || '', // Ensure image_url is always a string
       };
 
       if (isCreating) {
-        await createBlog.mutateAsync(postData);
+        // For creating, we omit id, published_at, and updated_at
+        const { id, published_at, updated_at, ...createData } = postData;
+        await createBlog.mutateAsync(createData);
         toast({
           title: "Success!",
           description: "Blog post created successfully.",
         });
       } else {
-        await updateBlog.mutateAsync(postData);
+        // For updating, we need to ensure id exists
+        if (!editingPost.id) {
+          throw new Error('Post ID is required for updates');
+        }
+        await updateBlog.mutateAsync({ ...postData, id: editingPost.id });
         toast({
           title: "Success!",
           description: "Blog post updated successfully.",

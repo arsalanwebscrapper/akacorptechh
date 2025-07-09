@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useBlogData, useCreateBlog, useUpdateBlog, useDeleteBlog, useRealtimeBlogData } from '@/hooks/useBlogData';
+import { useBlogData, useBlogMutations, useRealtimeBlogData } from '@/hooks/useBlogData';
 import {
   FaPlus,
   FaEdit,
@@ -49,9 +48,7 @@ const BlogManager = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { posts, isLoading: postsLoading } = useBlogData();
-  const createBlog = useCreateBlog();
-  const updateBlog = useUpdateBlog();
-  const deleteBlog = useDeleteBlog();
+  const { createBlog, updateBlog, deleteBlog } = useBlogMutations();
   
   useRealtimeBlogData(); // Enable real-time updates
 
